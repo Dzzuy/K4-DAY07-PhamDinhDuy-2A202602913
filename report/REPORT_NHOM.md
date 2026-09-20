@@ -133,16 +133,15 @@ Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đạ
 
 ### Câu hỏi đánh giá & Câu trả lời chuẩn (nhóm thống nhất)
 
-> **PENDING CP5 — Phạm Đình Duy phụ trách xây dựng và cùng nhóm xác nhận đúng 5 benchmark queries + gold answers.**  
-> Mỗi gold answer phải trích được từ corpus thật. Ít nhất một query phải cần `metadata_filter={"audience": "buyer"}` hoặc `{"audience": "seller"}` mới trả lời đúng.
+> Bộ 5 query dùng chung cho mọi thành viên. Gold answer đều trích từ corpus đã freeze. Q5 dùng `metadata_filter={"audience": "seller"}`; query không ghi buyer/seller để việc lọc metadata có ý nghĩa.
 
 | # | Câu hỏi (Query) | Câu trả lời chuẩn (Gold Answer) | Chunk/document chứa thông tin |
 |---|---|---|---|
-| 1 | PENDING CP5 | PENDING CP5 | PENDING CP5 |
-| 2 | PENDING CP5 | PENDING CP5 | PENDING CP5 |
-| 3 | PENDING CP5 | PENDING CP5 | PENDING CP5 |
-| 4 | PENDING CP5 | PENDING CP5 | PENDING CP5 |
-| 5 | PENDING CP5 — metadata-filter query | PENDING CP5 | PENDING CP5 |
+| 1 | Đối với đơn hàng do Người bán tự vận chuyển, nếu Người mua không bấm “Đã nhận được hàng”, thời hạn tối đa để gửi yêu cầu Trả hàng/Hoàn tiền là bao lâu kể từ lúc đơn hàng được cập nhật “Lấy hàng thành công”? | 20 ngày kể từ lúc đơn hàng được cập nhật trạng thái “Lấy hàng thành công”. | `return-refund-policy.md` — §1.2 |
+| 2 | Ba điều kiện bảo hành cơ bản mà Shopee khuyến cáo Người Mua cần đáp ứng là gì? | Còn thời hạn bảo hành; còn tem/phiếu bảo hành; sản phẩm bị lỗi kỹ thuật không phải do lỗi của Người Mua. | `buyer-warranty-policy.md` — Điều kiện bảo hành |
+| 3 | Khi đăng bán sản phẩm trên Shopee, Người Bán phải điền những thông tin nào liên quan đến nguồn gốc và bảo hành? | Điền đầy đủ nguồn gốc, xuất xứ, thuộc tính sản phẩm và chế độ bảo hành (nếu có) theo yêu cầu của mỗi ngành hàng. | `seller-listing-policy.md` — C.4 Thông tin mô tả |
+| 4 | Với tranh chấp không phải khiếu nại Trả hàng/Hoàn tiền, Shopee đưa ra hướng giải quyết trong bao lâu sau khi nhận đủ thông tin/tài liệu? | Trong vòng 07 ngày làm việc kể từ ngày nhận đầy đủ thông tin/tài liệu liên quan; vụ việc có nhiều thông tin hoặc tình tiết phức tạp có thể kéo dài hơn. | `dispute-process.md` — Bước 3 |
+| 5 | Khi phát sinh nhu cầu bảo hành sản phẩm trên Shopee thì cần làm gì? | Người Bán có trách nhiệm tiếp nhận bảo hành sản phẩm/dịch vụ cho Người Mua theo cam kết trong Chính sách bảo hành của Người Bán và/hoặc nhà sản xuất. Thông tin Chính sách bảo hành phải được đăng tải trong phần mô tả sản phẩm/dịch vụ trên Shopee. | `seller-warranty-policy.md` — §4; filter `audience=seller` |
 
 ### Tổng hợp chất lượng truy xuất của nhóm
 
