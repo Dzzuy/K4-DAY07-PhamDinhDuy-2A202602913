@@ -77,6 +77,13 @@
 
 > Mỗi thành viên thử **một chiến lược khác nhau** trên cùng bộ tài liệu. Corpus, 5 benchmark queries, gold answers, embedding backend, `top_k` và cách chấm được giữ giống nhau; chỉ chiến lược chunking thay đổi.
 
+### Cấu hình benchmark dùng chung
+
+- Corpus: `data/shopee-warranty/` (8 file Markdown; chỉ body được chunk).
+- Embedder: `LocalEmbedder` — `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
+- Top-k: 3; gold set: 5 logical queries với full gold answers trong `bench.py`.
+- Mỗi chunk giữ frontmatter gốc và thêm `doc_id=path.stem`. Q1 là A/B cùng một query, không tính thành hai câu.
+
 ### Phân tích đường cơ sở (Baseline Analysis)
 
 Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đại diện sau khi loại frontmatter:
@@ -120,9 +127,23 @@ Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đạ
 | Thành viên | Chiến lược | Điểm truy xuất (/10) | Điểm mạnh dự kiến | Điểm yếu dự kiến |
 |---|---|---:|---|---|
 | Phạm Quốc Đạt | FixedSizeChunker | PENDING CP6 | Đơn giản, kích thước ổn định, baseline rõ ràng | Có thể cắt giữa câu/điều khoản |
-| Phạm Đình Duy | SentenceChunker | PENDING CP6 | Giữ ranh giới câu, context tự nhiên | Chunk có thể dài không đều |
+| Phạm Đình Duy | SentenceChunker (`max_sentences_per_chunk=3`) | 5 / 10 | Q2 và Q4 lấy answer-bearing chunk ở Top-1; Q1 metadata filter đưa gold chunk vào Top-3. | Q3 và Q5 không đưa chunk chứa đủ marker vàng vào Top-3. |
 | Nguyễn Hữu Chương | RecursiveChunker | PENDING CP6 | Tôn trọng nhiều ranh giới tự nhiên | Có thể tạo nhiều chunk nhỏ |
 | Võ Trường An | HeadingAwarePolicyChunker | PENDING CP6 | Domain-aware, giữ cấu trúc heading/section | Phụ thuộc chất lượng heading; cần fallback cho section dài |
+
+\* Kết quả của Duy dùng `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` qua LocalEmbedder trên 41 sentence chunks. Không dùng kết quả để chọn winner khi ba chiến lược còn lại chưa có kết quả cuối.
+
+### Failure case quan sát từ SentenceChunker của Duy
+
+**Query:** Q3 — Sản phẩm của tôi cần đáp ứng các điều kiện cơ bản nào để được bảo hành?
+
+**Expected:** Chunk của `buyer-warranty-policy` có đủ “Còn thời hạn bảo hành”, “Còn tem/phiếu bảo hành” và “lỗi kỹ thuật”.
+
+**Observed:** Top-3 trả về một chunk nói chi phí/liên hệ bảo hành, một chunk chính sách chung và một chunk trách nhiệm Người Bán; không có chunk chứa đủ ba điều kiện.
+
+**Cause:** Chunk điều kiện cụ thể là các bullet ngắn, trong khi các chunk chính sách chung chứa nhiều từ “bảo hành” và “điều kiện” nên được semantic retrieval xếp cao hơn.
+
+**Proposed fix:** Ở một thí nghiệm mới, giữ heading đi kèm chunk sau hoặc thử overlap câu nhỏ; không thay đổi corpus/query/cấu hình của benchmark CP6 này sau khi đã chấm.
 
 **Chiến lược nào tốt nhất cho chủ đề này? Tại sao?**
 > **PENDING CP6.** Nhóm chỉ kết luận sau khi cả 4 thành viên chạy cùng 5 benchmark queries trên cùng corpus và cùng cấu hình retrieval. Không chọn “winner” trước khi có kết quả thực nghiệm.
@@ -133,15 +154,15 @@ Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đạ
 
 ### Câu hỏi đánh giá & Câu trả lời chuẩn (nhóm thống nhất)
 
-> Bộ 5 query dùng chung cho mọi thành viên. Gold answer đều trích từ corpus đã freeze. Q5 dùng `metadata_filter={"audience": "seller"}`; query không ghi buyer/seller để việc lọc metadata có ý nghĩa.
+> Bộ 5 query dùng chung cho mọi thành viên. Gold answer đều trích từ corpus đã freeze. Q1 chạy A/B trên cùng query: unfiltered và `metadata_filter={"audience": "seller"}`; hai lượt vẫn chỉ tính là một logical query.
 
 | # | Câu hỏi (Query) | Câu trả lời chuẩn (Gold Answer) | Chunk/document chứa thông tin |
 |---|---|---|---|
-| 1 | Đối với đơn hàng do Người bán tự vận chuyển, nếu Người mua không bấm “Đã nhận được hàng”, thời hạn tối đa để gửi yêu cầu Trả hàng/Hoàn tiền là bao lâu kể từ lúc đơn hàng được cập nhật “Lấy hàng thành công”? | 20 ngày kể từ lúc đơn hàng được cập nhật trạng thái “Lấy hàng thành công”. | `return-refund-policy.md` — §1.2 |
-| 2 | Ba điều kiện bảo hành cơ bản mà Shopee khuyến cáo Người Mua cần đáp ứng là gì? | Còn thời hạn bảo hành; còn tem/phiếu bảo hành; sản phẩm bị lỗi kỹ thuật không phải do lỗi của Người Mua. | `buyer-warranty-policy.md` — Điều kiện bảo hành |
-| 3 | Khi đăng bán sản phẩm trên Shopee, Người Bán phải điền những thông tin nào liên quan đến nguồn gốc và bảo hành? | Điền đầy đủ nguồn gốc, xuất xứ, thuộc tính sản phẩm và chế độ bảo hành (nếu có) theo yêu cầu của mỗi ngành hàng. | `seller-listing-policy.md` — C.4 Thông tin mô tả |
-| 4 | Với tranh chấp không phải khiếu nại Trả hàng/Hoàn tiền, Shopee đưa ra hướng giải quyết trong bao lâu sau khi nhận đủ thông tin/tài liệu? | Trong vòng 07 ngày làm việc kể từ ngày nhận đầy đủ thông tin/tài liệu liên quan; vụ việc có nhiều thông tin hoặc tình tiết phức tạp có thể kéo dài hơn. | `dispute-process.md` — Bước 3 |
-| 5 | Khi phát sinh nhu cầu bảo hành sản phẩm trên Shopee thì cần làm gì? | Người Bán có trách nhiệm tiếp nhận bảo hành sản phẩm/dịch vụ cho Người Mua theo cam kết trong Chính sách bảo hành của Người Bán và/hoặc nhà sản xuất. Thông tin Chính sách bảo hành phải được đăng tải trong phần mô tả sản phẩm/dịch vụ trên Shopee. | `seller-warranty-policy.md` — §4; filter `audience=seller` |
+| 1 | Quyền và trách nhiệm của tôi đối với việc bảo hành sản phẩm trên sàn là gì? | Người Bán tiếp nhận bảo hành theo Chính sách bảo hành và đăng chính sách trong phần mô tả. | `seller-warranty-policy.md`; A/B `audience=seller` |
+| 2 | Đơn tự vận chuyển có bao nhiêu ngày để yêu cầu trả hàng nếu chưa bấm nhận hàng? | 20 ngày từ “Lấy hàng thành công”. | `return-refund-policy.md` |
+| 3 | Sản phẩm cần điều kiện cơ bản nào để được bảo hành? | Còn hạn; còn tem/phiếu; lỗi kỹ thuật không do Người Mua. | `buyer-warranty-policy.md` |
+| 4 | Khiếu nại không phải Trả Hàng/Hoàn Tiền được xử lý bao lâu? | 07 ngày làm việc sau khi nhận đủ thông tin/tài liệu; vụ phức tạp có thể lâu hơn. | `dispute-process.md` |
+| 5 | Các lý do gửi yêu cầu Trả hàng/Hoàn tiền là gì? | Chưa nhận, thiếu/sai hàng, lỗi/khác mô tả/đã dùng/giả nhái, hoặc đổi ý còn nguyên trạng. | `return-refund-policy.md` |
 
 ### Tổng hợp chất lượng truy xuất của nhóm
 
@@ -156,7 +177,7 @@ Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đạ
 | 5 | PENDING CP5 | PENDING CP6 | PENDING CP6 | Metadata A/B required |
 
 **Lọc bằng metadata có giúp ích không? Ở câu hỏi nào?**
-> **PENDING CP6.** Nhóm sẽ so sánh filtered vs unfiltered trên query metadata đã chốt ở CP5 và chỉ kết luận từ kết quả thực tế.
+> **Kết quả CP6 của Duy (Q1, LocalEmbedder):** unfiltered không có chunk chứa đủ seller gold answer trong top-3; filtered `audience=seller` đưa chunk đó vào rank 3. Vì vậy metadata filter **improved** recall/evidence cho cách hiểu seller-specific, dù chưa đưa answer lên Top-1. Phần tổng hợp của nhóm vẫn **PENDING TEAM RESULTS**.
 
 ---
 

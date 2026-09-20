@@ -89,16 +89,18 @@ tests/test_solution.py .......................................... [100%]
 
 ## 4. Dự đoán độ tương tự (Similarity Predictions) — Cá nhân (5 điểm)
 
+**Ngưỡng đã chốt trước khi xem điểm:** cao `>= 0.50`, thấp `< 0.50`. Điểm được tính bằng `compute_similarity()` với đúng backend CP6 là `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
+
 | Cặp | Câu A | Câu B | Dự đoán | Điểm thực tế | Đúng? |
 |------|-----------|-----------|---------|--------------|-------|
-| 1 | | | cao / thấp | | |
-| 2 | | | cao / thấp | | |
-| 3 | | | cao / thấp | | |
-| 4 | | | cao / thấp | | |
-| 5 | | | cao / thấp | | |
+| 1 | Người mua có thể yêu cầu bảo hành khi sản phẩm còn thời hạn bảo hành. | Khách hàng được đề nghị bảo hành nếu hàng vẫn còn hạn. | cao | 0.6939 (cao) | Có |
+| 2 | Người bán phải công khai chế độ bảo hành trong mô tả sản phẩm. | Khi đăng sản phẩm, người bán cần ghi thông tin bảo hành ở phần mô tả. | cao | 0.8377 (cao) | Có |
+| 3 | Shopee xử lý tranh chấp trong vòng 07 ngày làm việc. | Python dùng thụt lề để xác định khối lệnh. | thấp | 0.1419 (thấp) | Có |
+| 4 | Đơn do người bán tự vận chuyển có thể yêu cầu hoàn tiền sau 20 ngày. | Nếu không bấm đã nhận hàng, thời hạn trả hàng là 20 ngày từ lúc lấy hàng thành công. | cao | 0.8229 (cao) | Có |
+| 5 | Người bán phải điền nguồn gốc và xuất xứ của sản phẩm. | Người mua cần gửi khiếu nại trong ứng dụng Shopee. | thấp | 0.3547 (thấp) | Có |
 
 **Kết quả nào bất ngờ nhất? Điều này nói gì về cách embeddings biểu diễn ý nghĩa?**
-> *Viết 2-3 câu:*
+> Cặp 2 cao nhất (0.8377), đúng vì cả hai nói rõ nghĩa vụ công khai bảo hành trong mô tả. Cặp 5 vẫn thấp hơn ngưỡng nhưng không gần 0, vì cả hai đều thuộc bối cảnh Shopee; embedding nhận ra một ít ngữ cảnh chung nhưng vẫn phân biệt hành động khác nhau. Điều này cho thấy cosine không chỉ so từ giống nhau mà còn phản ánh hướng nghĩa tổng thể.
 
 ---
 
@@ -106,18 +108,22 @@ tests/test_solution.py .......................................... [100%]
 
 Chạy **5 câu hỏi đánh giá của nhóm** trên mã nguồn cá nhân của bạn trong gói `src`. **5 câu hỏi này phải trùng với các thành viên cùng nhóm** (xem `REPORT_NHOM.md`).
 
-| # | Câu hỏi (Query) | Top-1 Chunk truy xuất được (tóm tắt) | Điểm Score | Có liên quan không? (Relevant) | Câu trả lời của Agent (tóm tắt) |
+| # | Câu hỏi (Query) | Top-1 Chunk truy xuất được (tóm tắt) | Điểm retrieval | Có evidence liên quan không? | Grounding từ retrieved context |
 |---|-------|--------------------------------|-------|-----------|------------------------|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
+| 1 | Quyền/trách nhiệm bảo hành trên sàn (A/B seller) | Top-1 là chính sách chung của Người Bán (0.6014); chunk có đủ gold answer ở rank 3 khi filter seller. | 1 / 2 | Có | Không có LLM; evidence rank 3 đủ để grounding gold answer. |
+| 2 | Thời hạn trả hàng đơn tự vận chuyển | `return-refund-policy` (0.8726): có mốc 20 ngày và “Lấy hàng thành công”. | 2 / 2 | Có | Không có LLM; evidence rank 1 đủ để trả lời 20 ngày. |
+| 3 | Ba điều kiện bảo hành | `buyer-warranty-policy` (0.6306): nói chi phí/liên hệ bảo hành, thiếu ba điều kiện. | 0 / 2 | Không | Không có LLM; top-3 không chứa đủ ba conditions của gold answer. |
+| 4 | Thời hạn xử lý tranh chấp | `dispute-process` (0.8307): nêu 07 ngày làm việc sau khi đủ thông tin/tài liệu. | 2 / 2 | Có | Không có LLM; evidence rank 1 đủ để trả lời gold answer. |
+| 5 | Danh sách lý do Trả hàng/Hoàn tiền | `return-refund-process` (0.6830): hướng dẫn cung cấp bằng chứng, không liệt kê các lý do. | 0 / 2 | Không | Không có LLM; top-3 không chứa đầy đủ danh sách lý do. |
 
-**Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** __ / 5
+**Bao nhiêu câu hỏi trả về chunk có liên quan trong top-3?** 3 / 5
+
+**SentenceChunker retrieval score:** 5 / 10 (Q1 rank 3 = 1 điểm; Q2/Q4 rank 1 = 2 điểm; Q3/Q5 = 0). Shared bench không đánh giá `KnowledgeBaseAgent` hoặc LLM.
+
+**Embedding backend:** `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` qua `LocalEmbedder`.
 
 **Điều hay nhất tôi học được từ thành viên khác / nhóm khác (qua demo):**
-> *Viết 2-3 câu:*
+> Một document đúng vẫn chưa đủ: phải nhìn đúng chunk có chứa câu trả lời. Metadata filter cũng chỉ giảm tập ứng viên; nó không tự làm embedding hiểu đúng câu hỏi. Vì thế benchmark cần giữ corpus và query cố định rồi ghi cả nội dung chunk, không chỉ ghi doc_id.
 
 ---
 
