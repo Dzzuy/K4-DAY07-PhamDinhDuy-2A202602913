@@ -124,12 +124,12 @@ Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đạ
 
 ### So Sánh Giữa Các Thành Viên
 
-| Thành viên | Chiến lược | Điểm truy xuất (/10) | Điểm mạnh dự kiến | Điểm yếu dự kiến |
-|---|---|---:|---|---|
-| Phạm Quốc Đạt | FixedSizeChunker | PENDING CP6 | Đơn giản, kích thước ổn định, baseline rõ ràng | Có thể cắt giữa câu/điều khoản |
-| Phạm Đình Duy | SentenceChunker (`max_sentences_per_chunk=3`) | 5 / 10 | Q2 và Q4 lấy answer-bearing chunk ở Top-1; Q1 metadata filter đưa gold chunk vào Top-3. | Q3 và Q5 không đưa chunk chứa đủ marker vàng vào Top-3. |
-| Nguyễn Hữu Chương | RecursiveChunker | PENDING CP6 | Tôn trọng nhiều ranh giới tự nhiên | Có thể tạo nhiều chunk nhỏ |
-| Võ Trường An | HeadingAwarePolicyChunker | PENDING CP6 | Domain-aware, giữ cấu trúc heading/section | Phụ thuộc chất lượng heading; cần fallback cho section dài |
+| Thành viên        | Chiến lược                                    | Điểm truy xuất (/10) | Điểm mạnh dự kiến                                                                       | Điểm yếu dự kiến                                                                           |     |
+| -------------------| -----------------------------------------------| ---------------------:| -----------------------------------------------------------------------------------------| --------------------------------------------------------------------------------------------| -----|
+| Phạm Quốc Đạt     | FixedSizeChunker                              | PENDING CP6          | Đơn giản, kích thước ổn định, baseline rõ ràng                                          | Có thể cắt giữa câu/điều khoản                                                             |     |
+| Phạm Đình Duy     | SentenceChunker (`max_sentences_per_chunk=3`) | 5 / 10               | Q2 và Q4 lấy answer-bearing chunk ở Top-1; Q1 metadata filter đưa gold chunk vào Top-3. | Q3 và Q5 không đưa chunk chứa đủ marker vàng vào Top-3.                                    |     |
+| Nguyễn Hữu Chương | RecursiveChunker                              | 7/10                 | Tôn trọng nhiều ranh giới tự nhiên                                                      | Có trường hợp tiêu đề nằm ở chunk này, nội dung nằm ở chunk kia, gây mất ngữ cảnh nội dung |     |
+| Võ Trường An      | HeadingAwarePolicyChunker                     | PENDING CP6          | Domain-aware, giữ cấu trúc heading/section                                              | Phụ thuộc chất lượng heading; cần fallback cho section dài                                 |     |
 
 \* Kết quả của Duy dùng `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` qua LocalEmbedder trên 41 sentence chunks. Không dùng kết quả để chọn winner khi ba chiến lược còn lại chưa có kết quả cuối.
 
@@ -168,38 +168,44 @@ Nhóm chạy `ChunkingStrategyComparator().compare()` trên ba tài liệu đạ
 
 > Cách chấm theo `docs/SCORING.md`: **2 điểm/câu** — top-3 chứa chunk liên quan + agent trả lời đúng (2), có liên quan nhưng thiếu/không ở top-1 (1), không có trong top-3 (0).
 
-| # | Câu hỏi | Chiến lược tốt nhất cho câu này | Có chunk liên quan trong top-3? | Ghi chú |
-|---|---|---|---|---|
-| 1 | PENDING CP5 | PENDING CP6 | PENDING CP6 | |
-| 2 | PENDING CP5 | PENDING CP6 | PENDING CP6 | |
-| 3 | PENDING CP5 | PENDING CP6 | PENDING CP6 | |
-| 4 | PENDING CP5 | PENDING CP6 | PENDING CP6 | |
-| 5 | PENDING CP5 | PENDING CP6 | PENDING CP6 | Metadata A/B required |
+| # | Câu hỏi                                                                         | Chiến lược tốt nhất cho câu này                                    | Có chunk liên quan trong top-3? | Ghi chú                                                                                                                                       |
+| - | ------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | Quyền và trách nhiệm của tôi đối với việc bảo hành sản phẩm trên sàn là gì?     | `RecursiveChunker` và `HeadingAwarePolicyChunker`                  | Có                              | Chương và An đều đưa answer-bearing chunk lên **Rank 2** khi dùng `audience=seller`; Duy đưa lên Rank 3.                                      |
+| 2 | Đơn tự vận chuyển có bao nhiêu ngày để yêu cầu trả hàng nếu chưa bấm nhận hàng? | `SentenceChunker`, `RecursiveChunker`, `HeadingAwarePolicyChunker` | Có                              | Cả ba LocalEmbedder run đều lấy đúng chunk chứa **20 ngày** và “Lấy hàng thành công” ở **Top-1**, đạt 2/2.                                    |
+| 3 | Sản phẩm cần điều kiện cơ bản nào để được bảo hành?                             | `RecursiveChunker` và `HeadingAwarePolicyChunker`                  | Có                              | Chương và An lấy đúng chunk chứa đủ 3 điều kiện ở **Top-1**, đạt 2/2. `SentenceChunker` của Duy không đưa chunk chứa đủ các marker vào Top-3. |
+| 4 | Khiếu nại không phải Trả Hàng/Hoàn Tiền được xử lý bao lâu?                     | `SentenceChunker`, `RecursiveChunker`, `HeadingAwarePolicyChunker` | Có                              | Cả ba LocalEmbedder run đều đưa chunk `dispute-process` chứa **07 ngày làm việc** lên Top-1, đạt 2/2.                                         |
+| 5 | Các lý do gửi yêu cầu Trả hàng/Hoàn tiền là gì?                                 | Chưa có chiến lược nào giải quyết đầy đủ                           | Không đủ                        | Cả ba LocalEmbedder run đều đạt 0/2 vì Top-3 không chứa đầy đủ 8 lý do của gold answer. Đây là failure case chung rõ nhất của benchmark.      |
 
 **Lọc bằng metadata có giúp ích không? Ở câu hỏi nào?**
-> **Kết quả CP6 của Duy (Q1, LocalEmbedder):** unfiltered không có chunk chứa đủ seller gold answer trong top-3; filtered `audience=seller` đưa chunk đó vào rank 3. Vì vậy metadata filter **improved** recall/evidence cho cách hiểu seller-specific, dù chưa đưa answer lên Top-1. Phần tổng hợp của nhóm vẫn **PENDING TEAM RESULTS**.
+
+> Metadata filter có tác dụng rõ nhất ở **Q1**, là câu hỏi cố ý mơ hồ giữa quyền/trách nhiệm của Người Mua và Người Bán. Với `SentenceChunker` của Duy, answer-bearing chunk chuyển từ **không có trong Top-3** khi unfiltered sang **Rank 3** khi lọc `audience=seller`. Với `RecursiveChunker` của Chương, kết quả cải thiện từ **Rank 3 lên Rank 2**. Với `HeadingAwarePolicyChunker` của An, answer-bearing chunk giữ nguyên **Rank 2 → Rank 2**, nghĩa là filter không tăng hạng nhưng vẫn giới hạn candidate về đúng audience. Kết quả cho thấy metadata filter hữu ích nhất khi corpus có nhiều tài liệu dùng từ vựng giống nhau nhưng áp dụng cho các đối tượng khác nhau.
 
 ---
 
 ## 4. Thuyết trình (Demo) & Bài học nhóm — Nhóm (5 điểm)
 
 **Những phân tích (insights) hay nhất nhóm sẽ trình bày:**
-> **PENDING CP6/CP7.** Sẽ chọn từ kết quả benchmark thực tế, metadata A/B và failure analysis.
+
+> 1. **Chunking ảnh hưởng trực tiếp đến retrieval:** cùng corpus, cùng 5 query và cùng embedding model nhưng `SentenceChunker` đạt 5/10, trong khi `RecursiveChunker` và `HeadingAwarePolicyChunker` đạt 7/10.
+> 2. **Metadata filter có giá trị thực tế:** ở Q1, filter `audience=seller` giúp `SentenceChunker` từ không có answer-bearing chunk trong Top-3 lên Rank 3 và giúp `RecursiveChunker` tăng từ Rank 3 lên Rank 2.
+> 3. **Đúng document chưa có nghĩa là đủ câu trả lời:** Q5 cho thấy retrieval có thể tìm đúng chủ đề hoặc đúng document nhưng vẫn không chứa đầy đủ danh sách 8 lý do cần trả lời. Vì vậy nhóm đánh giá ở content-level thay vì chỉ kiểm tra `doc_id`.
 
 **Bài học rút ra khi so sánh trong nhóm:**
-> **PENDING CP6/CP7.** Chỉ tổng kết sau khi 4 strategy chạy cùng benchmark.
+
+> `FixedSizeChunker` đơn giản và kiểm soát kích thước tốt nhưng dễ cắt giữa điều khoản; kết quả hiện tại của Đạt chưa thể so sánh công bằng vì artifact vẫn dùng MockEmbedder. `SentenceChunker` giữ câu hoàn chỉnh và hoạt động tốt ở các câu hỏi Q2, Q4 nhưng gặp khó với danh sách bullet và thông tin phụ thuộc heading. `RecursiveChunker` giữ được nhiều ranh giới tự nhiên và đạt 7/10. `HeadingAwarePolicyChunker` cũng đạt 7/10, đồng thời giữ heading cha trong từng subchunk nên phù hợp với tài liệu policy có cấu trúc section rõ ràng. Không có chiến lược nào giải quyết tốt Q5, cho thấy chunking đơn thuần chưa đủ cho câu hỏi yêu cầu tổng hợp một danh sách dài.
 
 **Nếu làm lại, nhóm sẽ thay đổi gì trong chiến lược dữ liệu (data strategy)?**
-> **PENDING CP7.**
+
+> Nhóm sẽ giữ cấu trúc heading/section và các danh sách bullet quan trọng thành các đơn vị nguyên vẹn thay vì để chúng bị chia giữa nhiều chunk. Với các section dài, có thể bổ sung overlap hoặc cơ chế lấy thêm các chunk lân cận trong cùng section. Ngoài dense embedding, nhóm cũng có thể thử hybrid retrieval như BM25 + vector search để cải thiện các câu hỏi chứa con số, cụm từ chính xác hoặc danh sách nhiều mục. Metadata cũng có thể được mở rộng thêm các trường như `section_type`, `policy_type` hoặc `effective_date`.
 
 ---
 
 ## Tự Đánh Giá (Phần Nhóm)
 
-| Tiêu chí | Điểm tự đánh giá |
-|---|---|
-| Lựa chọn tài liệu (Document Set Quality) | PENDING CP7 / 10 |
-| Thiết kế chiến lược (Strategy Design) | PENDING CP7 / 15 |
-| Chất lượng truy xuất (Retrieval Quality) | PENDING CP7 / 10 |
-| Thuyết trình (Demo) | PENDING CP7 / 5 |
-| **Tổng phần nhóm** | **PENDING CP7 / 40** |
+| Tiêu chí                                 | Điểm tự đánh giá |
+| ---------------------------------------- | ---------------- |
+| Lựa chọn tài liệu (Document Set Quality) | 10 / 10          |
+| Thiết kế chiến lược (Strategy Design)    | 15 / 15          |
+| Chất lượng truy xuất (Retrieval Quality) | 7 / 10           |
+| Thuyết trình (Demo)                      | 5 / 5            |
+| **Tổng phần nhóm**                       | **37 / 40**      |
