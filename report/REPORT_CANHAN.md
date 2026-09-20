@@ -1,11 +1,10 @@
 # Báo Cáo Cá Nhân — Lab 7: Embedding & Vector Store
 
-**Họ tên:** [Tên sinh viên]
-**Nhóm:** [Tên nhóm]
-**Ngày:** [Ngày nộp]
+**Họ tên:** Phạm Đình Duy
+**Nhóm:** Nova
+**Ngày:** 20/09/2026
 
 > **Nộp 1 bản / sinh viên.** Phần nhóm (lựa chọn tài liệu, thiết kế chiến lược, bộ câu hỏi đánh giá, demo) nộp chung 1 bản trong `REPORT_NHOM.md`. Chi tiết thang điểm: `docs/SCORING.md`.
-
 **Tổng điểm phần cá nhân: 60** = Khởi động (5) + Hướng tiếp cận (10) + Hoàn thiện code (30) + Dự đoán độ tương tự (5) + Kết quả truy xuất của tôi (10).
 
 ---
@@ -15,29 +14,29 @@
 ### Độ tương tự Cosine (Cosine Similarity) (Bài tập 1.1)
 
 **Độ tương tự cosine cao (High cosine similarity) nghĩa là gì?**
-> *Viết 1-2 câu:*
+> Hai vector gần cùng hướng nên hai đoạn thường có ý nghĩa gần nhau. Điểm cao không chứng minh hai câu giống hệt nhau, nhưng nó là tín hiệu tốt để lấy các đoạn liên quan trước.
 
 **Ví dụ có độ tương tự CAO:**
-- Câu A:
-- Câu B:
-- Tại sao tương đồng:
+- Câu A: Người mua có thể đổi sản phẩm trong vòng 7 ngày.
+- Câu B: Khách hàng được trả hàng trong một tuần.
+- Tại sao tương đồng: Cả hai đều nói về quyền đổi/trả hàng và cùng thời hạn, chỉ dùng từ khác nhau.
 
 **Ví dụ có độ tương tự THẤP:**
-- Câu A:
-- Câu B:
-- Tại sao khác:
+- Câu A: Người mua có thể đổi sản phẩm trong vòng 7 ngày.
+- Câu B: Python dùng thụt lề để xác định khối lệnh.
+- Tại sao khác: Một câu nói về chính sách thương mại điện tử, câu kia nói về cú pháp lập trình.
 
 **Tại sao độ tương tự cosine (cosine similarity) được ưu tiên hơn khoảng cách Euclid (Euclidean distance) cho text embeddings?**
-> *Viết 1-2 câu:*
+> Cosine so hướng của vector nên ít bị ảnh hưởng bởi độ lớn vector. Điều này hợp với embedding vì ta thường cần so mức gần nhau về nghĩa; khi embedding đã chuẩn hóa như `MockEmbedder`, dot product cũng tương đương cosine để xếp hạng.
 
 ### Bài toán tính toán Chunking (Bài tập 1.2)
 
 **Tài liệu 10,000 ký tự, chunk_size=500, overlap=50. Bao nhiêu chunks?**
-> *Trình bày phép tính:*
-> *Đáp án:*
+> Phép tính: `ceil((10000 - 50) / (500 - 50)) = ceil(9950 / 450) = 23`.
+> Đáp án: 23 chunks. Tôi đã kiểm tra bằng `FixedSizeChunker(chunk_size=500, overlap=50)` trên chuỗi 10,000 ký tự và nhận được 23.
 
 **Nếu độ chồng chéo (overlap) tăng lên 100, số lượng chunk thay đổi thế nào? Tại sao muốn độ chồng chéo nhiều hơn?**
-> *Viết 1-2 câu:*
+> `ceil((10000 - 100) / (500 - 100)) = ceil(9900 / 400) = 25`, nên số chunk tăng lên 25. Overlap lớn giữ thêm ngữ cảnh ở ranh giới chunk, nhưng step nhỏ hơn nên tốn thêm lưu trữ và số lần embedding.
 
 ---
 
@@ -48,23 +47,23 @@ Giải thích cách tiếp cận của bạn khi lập trình (implement) các p
 ### Các hàm chia nhỏ (Chunking Functions)
 
 **`SentenceChunker.chunk`** — hướng tiếp cận:
-> *Viết 2-3 câu: dùng biểu thức chính quy (regex) gì để phát hiện câu? Xử lý trường hợp ngoại lệ (edge case) nào?*
+> Tôi dùng regex `(?<=[.!?])\s+` để tách sau dấu câu nên dấu `.`, `!`, `?` vẫn nằm trong câu. Sau đó tôi strip và gom tối đa N câu vào một chunk; text rỗng trả về `[]`. Cách này đơn giản cho lab, nên các trường hợp như `Dr.`, `v.v.` hoặc số thập phân `3.14` vẫn có thể bị tách chưa đúng.
 
 **`RecursiveChunker.chunk` / `_split`** — hướng tiếp cận:
-> *Viết 2-3 câu: thuật toán hoạt động thế nào? Base case (trường hợp cơ sở) là gì?*
+> Thuật toán thử lần lượt paragraph, dòng, câu, từ và cuối cùng là ký tự. Base case là text rỗng, hoặc text đã ngắn hơn `chunk_size`; đoạn còn dài sẽ gọi lại với separator nhỏ hơn. Các mảnh nhỏ được ghép lại gần ngưỡng kích thước để không tạo quá nhiều chunk ngắn; nếu không còn separator thì hard-split theo ký tự.
 
 ### Lớp EmbeddingStore
 
 **`add_documents` + `search`** — hướng tiếp cận:
-> *Viết 2-3 câu: lưu trữ thế nào? Tính độ tương tự ra sao?*
+> Mỗi `Document` được lưu thành một record in-memory gồm id, content, metadata copy và embedding. Khi search, query được embed một lần rồi lấy dot product với embedding đã lưu, sort giảm dần và trả tối đa `top_k`. Mock embeddings của lab đã normalize nên dot product dùng được để xếp hạng.
 
 **`search_with_filter` + `delete_document`** — hướng tiếp cận:
-> *Viết 2-3 câu: lọc (filter) trước hay sau? Xóa bằng cách nào?*
+> Tôi lọc metadata trước rồi mới xếp hạng, vì lọc sau top-k có thể bỏ lỡ kết quả đúng thuộc nhóm metadata cần tìm. Metadata được copy và thêm `doc_id` mặc định từ `Document.id`; delete giữ lại các record có `doc_id` khác nên xóa hết mọi chunk của cùng tài liệu nguồn.
 
 ### Tác tử KnowledgeBaseAgent
 
 **`answer`** — hướng tiếp cận:
-> *Viết 2-3 câu: cấu trúc prompt? Cách đưa ngữ cảnh (inject context) vào thế nào?*
+> Agent gọi `store.search(question, top_k)` rồi tạo context đánh số `[1]`, `[2]` với source và content của từng kết quả. Prompt yêu cầu chỉ dùng context, không bịa, và nói rõ khi context chưa đủ; sau đó nó gọi `llm_fn` đã được inject. Nếu không có kết quả, agent trả thông báo rõ ràng mà không gọi LLM.
 
 ---
 
@@ -75,10 +74,16 @@ Vượt qua bộ kiểm thử là điều kiện tính điểm phần này.
 ### Kết Quả Kiểm Thử (Test Results)
 
 ```
-# Dán kết quả (output) của: pytest tests/ -v
+$ pytest tests/ -v
+============================= test session starts ==============================
+collected 42 items
+
+tests/test_solution.py .......................................... [100%]
+
+============================== 42 passed in 0.05s ==============================
 ```
 
-**Số lượng bài test vượt qua (pass):** __ / 42
+**Số lượng bài test vượt qua (pass):** 42 / 42
 
 ---
 
